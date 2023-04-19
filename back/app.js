@@ -1,18 +1,29 @@
+require("dotenv").config();
+
 const express = require("express");
 const mongoose = require("mongoose");
 
+const Book = require("./models/Book");
+const User = require("./models/User");
+
 const app = express();
 
+app.use(express.json());
+
+// mongoose connection
 mongoose
   .connect(
-    "mongodb+srv://John:A3(y@cluster0.zsxql1m.mongodb.net/?retryWrites=true&w=majority",
+    "mongodb+srv://" +
+      process.env.GRIMOIRE_USER +
+      ":" +
+      process.env.GRIMOIRE_PASSWORD +
+      "@cluster0.zsxql1m.mongodb.net/?retryWrites=true&w=majority",
     { useNewUrlParser: true, useUnifiedTopology: true }
   )
   .then(() => console.log("Connexion à MongoDB réussie !"))
   .catch(() => console.log("Connexion à MongoDB échouée !"));
 
-app.use(express.json());
-
+// cross-origin
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader(
@@ -26,60 +37,64 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/api/books", (req, res, next) => {
-  const books = [
-    {
-      _id: "1",
-      userId: "8gfd1g5",
-      title: "Du Côté de Chez Swann",
-      author: "Marcel Proust",
-      imageUrl:
-        "https://cdn.futura-sciences.com/cdn-cgi/image/width=1920,quality=60,format=auto/sources/images/dossier/rte/9115_livre%20ouvert_Horia%20Varlan%20-flickr%20by%2020.jpg",
-      year: 1913,
-      genre: "Roman",
-      ratings: [
-        {
-          userId: "5gfdg4fd",
-          grade: 5,
-        },
-        {
-          userId: "f5ds98g",
-          grade: 5,
-        },
-      ],
-      averageRating: 5,
-    },
-    {
-      _id: "2",
-      userId: "g14df5g4",
-      title: "Notre-Dame-de-Paris",
-      author: "Victor Hugo",
-      imageUrl:
-        "https://cdn.futura-sciences.com/cdn-cgi/image/width=1920,quality=60,format=auto/sources/images/dossier/rte/9115_livre%20ouvert_Horia%20Varlan%20-flickr%20by%2020.jpg",
-      year: 1831,
-      genre: "Roman",
-      ratings: [
-        {
-          userId: "f5dgdgfd",
-          grade: 5,
-        },
-        {
-          userId: "gdfg5dfgfd6",
-          grade: 3,
-        },
-      ],
-      averageRating: 4,
-    },
-  ];
-  res.status(200).json(books);
-  next();
+// CRUD routes
+// signup
+app.post("/api/auth/signup", (req, res, next) => {
+  const user = new User({
+    ...req.body,
+  });
+  user
+    .save()
+    .then(() => res.status(201).json({ message: "utilisateur créé" }))
+    .catch((error) => res.status(400).json({ error }));
 });
 
-app.post("/api/auth/login", (req, res, next) => {
-  console.log(req.body);
-  res.status(201).json({
-    message: "utilisateur connecté",
-  });
+// login
+app.post("/api/auth/login", (req, res, next) => {});
+
+// get books
+app.get("/api/books", (req, res, next) => {
+  Book.find()
+    .then((books) => res.status(200).json(books))
+    .catch((error) => res.status(400).json({ error }));
 });
+
+// get book
+app.get("/api/books/:id", (req, res, next) => {
+  Book.findOne({ _id: req.params.id })
+    .then((book) => res.status(200).json(book))
+    .catch((error) => res.status(404).json({ error }));
+});
+
+// get best rating books
+app.get("/api/books/bestrating", (req, res, next) => {});
+
+// create book
+app.post("/api/books", (req, res, next) => {
+  const book = new Book({
+    ...req.body,
+  });
+  book
+    .save()
+    .then(() => res.status(201).json({ message: "livre ajouté" }))
+    .catch((error) => res.status(400).json({ error }));
+});
+
+// modify book
+app.put("/api/books/:id", (req, res, next) => {
+  Book.updateOne({ _id: req.params.id }, { ...req.body, _id: req.params.id })
+    .then(() => res.status(200).json({ message: "livre modifié" }))
+    .catch((error) => res.status(400).json({ error }));
+});
+
+// delete book
+app.delete("/api/books/:id", (req, res, next) => {
+  Book.deleteOne({ _id: req.params.id })
+    .then(() => res.status(200).json({ message: "livre supprimé" }))
+    .catch((error) => res.status(400).json({ error }));
+});
+
+// add rating
+app.post("/api/books/:id/rating", (req, res, next) => {});
 
 module.exports = app;
