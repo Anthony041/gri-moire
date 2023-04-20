@@ -1,15 +1,13 @@
-// dotenv
-require("dotenv").config();
-
 // Express
 const express = require("express");
 const app = express();
-
 app.use(express.json());
+
+// Dotenv
+require("dotenv").config();
 
 // Mongoose
 const mongoose = require("mongoose");
-
 mongoose
   .connect(
     "mongodb+srv://" +
@@ -37,6 +35,9 @@ app.use((req, res, next) => {
 });
 
 // routes
-require("./routes")(app);
+const booksRoutes = require("./routes/books");
+const authRoutes = require("./routes/auth");
+app.use("/api/books", booksRoutes);
+app.use("/api/auth", authRoutes);
 
 module.exports = app;
