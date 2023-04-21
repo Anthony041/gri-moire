@@ -35,9 +35,9 @@ app.use((req, res, next) => {
 });
 
 // routes
-const booksRoutes = require("./routes/books");
-const authRoutes = require("./routes/auth");
-app.use("/api/books", booksRoutes);
-app.use("/api/auth", authRoutes);
+const bookRoutes = require("./routes/book");
+const userRoutes = require("./routes/user");
+app.use("/api/books", bookRoutes);
+app.use("/api/auth", userRoutes);
 
 module.exports = app;
