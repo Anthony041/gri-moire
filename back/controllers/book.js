@@ -32,14 +32,14 @@ exports.createBook = (req, res, next) => {
   delete bookObject._id;
   delete bookObject._userId;
 
-  // redimensionnement de l'image enregistrée sur le serveur
+  // redimensionnement de l'image stockée sur le serveur
   sharp(`images/${req.file.filename}`)
     .resize({ width: 405 })
     .toFile(`images/resized-${req.file.filename}`)
 
     // cas où le redimensionnement a fonctionné
     .then(() => {
-      // suppression de l'ancienne image
+      // suppression de l'image de la requête déjà stockée
       fs.unlink(`images/${req.file.filename}`, () => {
         // création du livre à enregistrer
         const book = new Book({
@@ -65,46 +65,75 @@ exports.createBook = (req, res, next) => {
 };
 
 exports.modifyBook = (req, res, next) => {
-  // création de l'objet à modifier à partir du formulaire
+  // création de l'objet incluant les modifications indiquées sur le formulaire
   const bookObject = req.file
     ? {
         ...JSON.parse(req.body.book),
-        imageUrl: `${req.protocol}://${req.get("host")}/images/${
+        imageUrl: `${req.protocol}://${req.get("host")}/images/resized-${
           req.file.filename
         }`,
       }
     : { ...req.body };
 
+  // suppression de l'id fourni par le client
   delete bookObject._userId;
 
+  // recherche du livre à modifier
   Book.findOne({ _id: req.params.id })
+
+    // cas où le livre a été trouvé
     .then((book) => {
+      // cas où l'utilisateur identifié n'est pas celui qui a créé le livre
       if (book.userId != req.auth.userId) {
         res.status(401).json({ message: "non autorisé" });
+
+        // cas où l'utilisateur identifié n'est bien celui qui a créé le livre
       } else {
+        // mise à jour du livre si l'image n'est pas à modifier
         if (bookObject.imageUrl === undefined) {
-          // mise à jour du livre tout de suite si pas l'image n'est pas à modifier
           Book.updateOne(
             { _id: req.params.id },
             { ...bookObject, _id: req.params.id }
           )
             .then(() => res.status(200).json({ message: "livre modifié" }))
             .catch((error) => res.status(400).json({ error }));
+
+          // redimensionnement de l'image stockée sur le serveur si l'image est à modifier
         } else {
-          // suppression de l'ancienne image si l'image est à modifier
-          const filename = book.imageUrl.split("/images/")[1];
-          fs.unlink(`images/${filename}`, () => {
-            // puis mise à jour du livre
-            Book.updateOne(
-              { _id: req.params.id },
-              { ...bookObject, _id: req.params.id }
-            )
-              .then(() => res.status(200).json({ message: "livre modifié" }))
-              .catch((error) => res.status(400).json({ error }));
-          });
+          sharp(`images/${req.file.filename}`)
+            .resize({ width: 405 })
+            .toFile(`images/resized-${req.file.filename}`)
+
+            // cas où le redimensionnement a fonctionné
+            .then(() => {
+              // suppression de l'image de la requête déjà stockée
+              fs.unlink(`images/${req.file.filename}`, () => {
+                // suppression de l'ancienne image du livre
+                Book.findOne({ _id: req.params.id })
+                  .then((book) => {
+                    const filename = book.imageUrl.split("/images/")[1];
+                    fs.unlink(`images/${filename}`, () => {
+                      // puis mise à jour du livre
+                      Book.updateOne(
+                        { _id: req.params.id },
+                        { ...bookObject, _id: req.params.id }
+                      )
+                        .then(() =>
+                          res.status(200).json({ message: "livre modifié" })
+                        )
+                        .catch((error) => res.status(400).json({ error }));
+                    });
+                  })
+                  .catch((error) => res.status(400).json({ error }));
+              });
+            })
+            // cas où le redimensionnement n'a pas fonctionné
+            .catch((error) => res.status(400).json({ error }));
         }
       }
     })
+
+    // cas où le livre n'a pas été trouvé
     .catch((error) => res.status(400).json({ error }));
 };
 
