@@ -1,5 +1,6 @@
 const Book = require("../models/Book");
 const fs = require("fs");
+const sharp = require("sharp");
 
 exports.getAllBooks = (req, res, next) => {
   Book.find()
@@ -24,19 +25,42 @@ exports.getBestRatingBooks = (req, res, next) => {
 };
 
 exports.createBook = (req, res, next) => {
+  // récupération des données saisies
   const bookObject = JSON.parse(req.body.book);
+
+  // suppression des id fournis par le client
   delete bookObject._id;
   delete bookObject._userId;
-  const book = new Book({
-    ...bookObject,
-    userId: req.auth.userId,
-    imageUrl: `${req.protocol}://${req.get("host")}/images/${
-      req.file.filename
-    }`,
-  });
-  book
-    .save()
-    .then(() => res.status(201).json({ message: "livre ajouté" }))
+
+  // redimensionnement de l'image enregistrée sur le serveur
+  sharp(`images/${req.file.filename}`)
+    .resize({ width: 405 })
+    .toFile(`images/resized-${req.file.filename}`)
+
+    // cas où le redimensionnement a fonctionné
+    .then(() => {
+      // suppression de l'ancienne image
+      fs.unlink(`images/${req.file.filename}`, () => {
+        // création du livre à enregistrer
+        const book = new Book({
+          ...bookObject,
+          userId: req.auth.userId,
+          imageUrl: `${req.protocol}://${req.get("host")}/images/resized-${
+            req.file.filename
+          }`,
+        });
+
+        // enregistrement du livre
+        book
+          .save()
+          .then(() => res.status(201).json({ message: "livre ajouté" }))
+
+          // cas où l'enregistrement n'a pas fonctionné
+          .catch((error) => res.status(400).json({ error }));
+      });
+    })
+
+    // cas où le redimensionnement n'a pas fonctionné
     .catch((error) => res.status(400).json({ error }));
 };
 
