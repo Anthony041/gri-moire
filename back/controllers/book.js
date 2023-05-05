@@ -13,7 +13,15 @@ exports.getOneBook = (req, res, next) => {
     .catch((error) => res.status(404).json({ error }));
 };
 
-exports.getBestRatingBooks = (req, res, next) => {};
+exports.getBestRatingBooks = (req, res, next) => {
+  Book.find()
+    .then((books) => {
+      books.sort((a, b) => b.averageRating - a.averageRating);
+      const top3Books = books.slice(0, 3);
+      res.status(200).json(top3Books);
+    })
+    .catch((error) => res.status(400).json({ error }));
+};
 
 exports.createBook = (req, res, next) => {
   const bookObject = JSON.parse(req.body.book);
@@ -103,7 +111,7 @@ exports.addRating = (req, res, next) => {
       // test si l'utilisateur qui souhaite noter le livre l'a déjà noté
       if (users.includes(req.body.userId)) {
         // cas où l'utilisateur a déjà noté le livre
-        res.status(403).json({ message: "note déjà ajoutée" });
+        res.status(403).json({ message: "livre déjà noté" });
       }
 
       // cas où l'utilisateur n'a pas encore noté le livre
@@ -119,7 +127,7 @@ exports.addRating = (req, res, next) => {
         ).then(() => {
           // une fois la promesse résolue (note ajoutée)
           return (
-            // on récupère sur le livre concerné
+            // on récupère le livre mis à jour
             Book.findOne({ _id: req.params.id })
               .then((book) => {
                 // calcul de la moyenne
@@ -143,10 +151,10 @@ exports.addRating = (req, res, next) => {
                     .then(() => {
                       // une fois la promesse résolue (moyenne mise à jour)
                       return (
-                        // on récupère le livre concerné
+                        // on récupère le livre mis à jour
                         Book.findOne({ _id: req.params.id })
                           .then((book) => {
-                            // on renvoie le livre au front-end
+                            // on envoie le livre au front-end
                             res.status(201).json(book);
                           })
                           .catch((error) => res.status(400).json({ error }))
