@@ -85,7 +85,7 @@ exports.modifyBook = (req, res, next) => {
     .then((book) => {
       // cas où l'utilisateur identifié n'est pas celui qui a créé le livre
       if (book.userId != req.auth.userId) {
-        res.status(401).json({ message: "non autorisé" });
+        res.status(403).json({ message: "non autorisé" });
 
         // cas où l'utilisateur identifié n'est bien celui qui a créé le livre
       } else {
@@ -188,7 +188,7 @@ exports.addRating = (req, res, next) => {
                 const sumOfGrades = grades.reduce(
                   (accumulator, currentValue) => accumulator + currentValue
                 );
-                const average = sumOfGrades / grades.length;
+                const average = (sumOfGrades / grades.length).toFixed(1);
 
                 // mise à jour de la moyenne
                 return (
